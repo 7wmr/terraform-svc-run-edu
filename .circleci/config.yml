@@ -1,0 +1,66 @@
+version: 2
+jobs:
+  build:
+    docker:
+      - image: circleci/golang:1.12.9
+    working_directory: ~/app
+    steps:
+      - checkout
+      - attach_workspace:
+          at: ~/app
+      - run: 
+          name: Install gox build tool
+          command: go get github.com/mitchellh/gox
+      - run:
+          name: Install golang modules
+          command: |
+            go get github.com/streadway/amqp
+      - run: 
+          name: Build golang application
+          command: |
+            gox -os "linux" -os "darwin" -arch "amd64" -output "dist/svc_run_{{.OS}}_{{.Arch}}"
+      - run:
+          name: Store version number
+          command: |
+            git describe --tags | tee dist/version.txt
+      - persist_to_workspace:
+          root: .
+          paths: .
+
+  publish-github:
+    docker:
+      - image: cibuilds/github:0.12.2
+    working_directory: ~/app
+    steps:
+      - attach_workspace:
+          at: ~/app 
+      - run: 
+          name: Publish release to GitHub
+          command: |
+            VERSION=`cat ./dist/version.txt`
+            rm -f ./dist/version.txt 
+            echo "Version:  ${VERSION}"
+            ghr -t $GITHUB_TOKEN \
+                -u $CIRCLE_PROJECT_USERNAME \
+                -r $CIRCLE_PROJECT_REPONAME \
+                -c $CIRCLE_SHA1 \
+                -delete $VERSION ./dist/
+
+workflows:
+  version: 2
+  build-and-publish:
+    jobs:
+      - build:
+          filters:
+            branches:
+              only:
+                - master
+      - publish-github:
+          filters:
+            branches:
+              only: master
+            tags:
+              only: /^\d+\.\d+\.\d+$/
+          requires:
+            - build
+
