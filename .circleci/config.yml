@@ -14,7 +14,8 @@ jobs:
       - run:
           name: Install golang modules
           command: |
-            go get github.com/streadway/amqp
+            go get github.com/satori/go.uuid \
+            && go get github.com/streadway/amqp
       - run: 
           name: Build golang application
           command: |
