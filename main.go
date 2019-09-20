@@ -1,16 +1,19 @@
 package main
 
 import (
-	//"encoding/json"
+	"encoding/json"
 	"flag"
 	"fmt"
-	uuid "github.com/satori/go.uuid"
+	"github.com/jinzhu/gorm"
+	_ "github.com/jinzhu/gorm/dialects/mysql"
 	"github.com/streadway/amqp"
 	"log"
 )
 
 var msgEndpoint *string
 var msgCredentials *string
+var dbsEndpoint *string
+var dbsCredentials *string
 
 // failOnError - log an error messsage upon failure
 func failOnError(err error, msg string) {
@@ -21,16 +24,35 @@ func failOnError(err error, msg string) {
 
 // Request - declare structure
 type Request struct {
-	UUID     uuid.UUID `json:"uuid"`
-	Hostname string    `json:"hostname"`
+	gorm.Model
+	UUID     string `json:"uuid"`
+	Hostname string `json:"hostname"`
 }
 
 func main() {
-	msgEndpoint = flag.String("msg-endpoint", "", "RabbitMQ messaging endpoint")
+	msgEndpoint = flag.String("msg-endpoint", "", "RabbitMQ messaging endpoint hostname:port")
 	msgCredentials = flag.String("msg-credentials", "", "RabbitMQ messaging credentials")
+	dbsEndpoint = flag.String("dbs-endpoint", "", "MySQL endpoint hostname:port")
+	dbsCredentials = flag.String("dbs-credentials", "", "MySQL credentials")
 	flag.Parse()
 
-	conn, err := amqp.Dial(fmt.Sprintf("amqp://%s@%s/", *msgCredentials, *msgEndpoint))
+	mysqlString := fmt.Sprintf(
+		"%s@tcp(%s)/%s?charset=utf8&parseTime=True&loc=Local",
+		*dbsCredentials,
+		*dbsEndpoint,
+		"TerraformEdu")
+
+	db, err := gorm.Open("mysql", mysqlString)
+	failOnError(err, "Failed to open db connection")
+	db.AutoMigrate(&Request{})
+	db.Close()
+
+	rabbitMQString := fmt.Sprintf(
+		"amqp://%s@%s/",
+		*msgCredentials,
+		*msgEndpoint)
+
+	conn, err := amqp.Dial(rabbitMQString)
 
 	failOnError(err, "Failed to connect to RabbitMQ")
 	defer conn.Close()
@@ -70,8 +92,17 @@ func main() {
 	forever := make(chan bool)
 
 	go func() {
+		db, err := gorm.Open("mysql", mysqlString)
+		failOnError(err, "Failed to open db connection")
+		defer db.Close()
+
 		for d := range msgs {
-			log.Printf(string(d.Body))
+			var request Request
+
+			if err := json.Unmarshal([]byte(d.Body), &request); err != nil {
+				log.Fatal(err)
+			}
+			db.Create(&request)
 			d.Ack(true)
 		}
 	}()
