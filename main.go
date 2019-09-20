@@ -98,7 +98,7 @@ func main() {
 
 		for d := range msgs {
 			var request Request
-
+			log.Printf(string(d.Body))
 			if err := json.Unmarshal([]byte(d.Body), &request); err != nil {
 				log.Fatal(err)
 			}
