@@ -25,8 +25,8 @@ func failOnError(err error, msg string) {
 // Request - declare structure
 type Request struct {
 	gorm.Model
-	UUID     string `json:"uuid"`
-	Hostname string `json:"hostname"`
+	UUID     string `json:"uuid" sql:"not null; size:255; unique"`
+	Hostname string `json:"hostname" sql:"not null; size:255"`
 }
 
 func main() {
