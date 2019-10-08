@@ -36,7 +36,7 @@ func main() {
 	dbsCredentials = flag.String("dbs-credentials", "", "MySQL credentials")
 	flag.Parse()
 
-	baseMysqlString := "%s@tcp(%s)%s?charset=utf8&parseTime=True&loc=Local"
+	baseMysqlString := "%s@tcp(%s)/%s?charset=utf8&parseTime=True&loc=Local"
 
 	mysqlString := fmt.Sprintf(
 		baseMysqlString,
@@ -53,7 +53,7 @@ func main() {
 		baseMysqlString,
 		*dbsCredentials,
 		*dbsEndpoint,
-		"/TerraformEdu")
+		"TerraformEdu")
 
 	db, err = gorm.Open("mysql", mysqlString)
 	failOnError(err, "Failed to open db connection")
