@@ -55,7 +55,7 @@ func main() {
 		*dbsEndpoint,
 		"/TerraformEdu")
 
-	db, err := gorm.Open("mysql", mysqlString)
+	db, err = gorm.Open("mysql", mysqlString)
 	failOnError(err, "Failed to open db connection")
 	db.AutoMigrate(&Request{})
 	db.Close()
