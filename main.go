@@ -36,11 +36,24 @@ func main() {
 	dbsCredentials = flag.String("dbs-credentials", "", "MySQL credentials")
 	flag.Parse()
 
+	baseMysqlString := "%s@tcp(%s)%s?charset=utf8&parseTime=True&loc=Local"
+
 	mysqlString := fmt.Sprintf(
-		"%s@tcp(%s)/%s?charset=utf8&parseTime=True&loc=Local",
+		baseMysqlString,
 		*dbsCredentials,
 		*dbsEndpoint,
-		"TerraformEdu")
+		"")
+
+	db, err := gorm.Open("mysql", mysqlString)
+	failOnError(err, "Failed to open instance connection")
+	db.Exec("CREATE DATABASE IF NOT EXISTS TerraformEdu;")
+	db.Close()
+
+	mysqlString = fmt.Sprintf(
+		baseMysqlString,
+		*dbsCredentials,
+		*dbsEndpoint,
+		"/TerraformEdu")
 
 	db, err := gorm.Open("mysql", mysqlString)
 	failOnError(err, "Failed to open db connection")
